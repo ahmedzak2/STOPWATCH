@@ -23,9 +23,10 @@ void timer1_init_comp_mode( )
 {
 	TCCR1A=(1<<FOC1A)|(1<<FOC1B);//activate the force output compare for channel a and b
 	TCCR1B=(1<<WGM12)|(1<<CS10)|(1<<CS11); // pre scaler is FCPU/64 and activate the compare mood
+	TIMSK|=(1<<OCIE1A);// Enable the interrupt for timer1 compare mode
 	TCNT1=0;//Set Timer initial value to 0
 	OCR1A=15625;//to count one second
-	TIMSK|=(1<<OCIE1A);// Enable the interrupt for timer1 compare mode
+
 }
 void INT0_int(void)
 {
@@ -38,7 +39,6 @@ void INT0_int(void)
 void INT1_int(void)
 {
 	DDRD= DDRD &(~(1<<PD3)); // configure pin 3 in port d as external interrupt
-	PORTD |=(1<<PD3); // Enable the internal pull up
 	GICR|=(1<<INT1); // Enable the general interrupt control register
 	MCUCR |=(1<<ISC11); // Enable the MCU interrupt control register
 	MCUCR =MCUCR & (~(1<<ISC10));
@@ -46,10 +46,11 @@ void INT1_int(void)
 }
 void INT2_int(void)
 {
-	GICR|=(1<<INT2); // Enable the general interrupt control register
-	MCUCSR&=~(1<<ISC2);
 	DDRB= DDRB &(~(1<<PB2)); // configure pin 2 in port B as external interrupt
+	GICR|=(1<<INT2); // Enable the general interrupt control register
+	MCUCSR|=(1<<ISC2);
 
+PORTB|=(1<<PB2);
 }
 
 
@@ -96,11 +97,13 @@ ISR(INT0_vect)
 }
 ISR(INT1_vect)
 {
-
+	TCCR1B&=~(1<<CS10);
+		TCCR1B&=~(1<<CS11);
+		TCCR1B&=~(1<<CS12);
 }
 ISR(INT2_vect)
 {
-
+	TCCR1B=(1<<WGM12)|(1<<CS10)|(1<<CS11);
 }
 
 int main(void)
@@ -108,7 +111,6 @@ int main(void)
 	SREG |= (1<<7); // Enable the global in interrupt
 	timer1_init_comp_mode( );//initiate the timer 1
 	DDRA|=0X3F;// make the first 6 pin is output to enable the 6 7-segment
-	PORTC &= 0xE0; // make the initial value is zero
 	DDRC|=0X0F; // // configure pin 0,1,2,3 in port c for 7-segment
 	PORTC&= 0xF0; // make the initial value is zero
 	INT0_int();// Initiate the external interrupt 0
